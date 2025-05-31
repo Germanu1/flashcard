@@ -1,0 +1,170 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f7f6;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+}
+
+.container {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 800px;
+    text-align: center;
+}
+
+h1 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+}
+
+p {
+    margin-bottom: 25px;
+    color: #555;
+}
+
+textarea {
+    width: calc(100% - 20px);
+    padding: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 16px;
+    resize: vertical;
+}
+
+button {
+    background-color: #28a745;
+    color: white;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 5px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #218838;
+}
+
+button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+#loading {
+    margin-top: 15px;
+    font-style: italic;
+    color: #007bff;
+}
+
+.error-message {
+    margin-top: 15px;
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.hidden {
+    display: none;
+}
+
+/* --- Added styles for image upload section --- */
+.file-upload-label {
+    display: inline-block;
+    background-color: #6c757d; /* A neutral gray */
+    color: white;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-top: 10px; /* Space from textarea */
+}
+
+.file-upload-label:hover {
+    background-color: #5a6268;
+}
+
+#imageUpload {
+    display: none; /* Hide the default file input */
+}
+
+#clearImageBtn {
+    background-color: #dc3545; /* Red color for clear button */
+    margin-left: 10px; /* Space from upload label */
+}
+#clearImageBtn:hover {
+    background-color: #c82333;
+}
+/* --- End of added styles for image upload section --- */
+
+
+#flashcardsContainer {
+    margin-top: 30px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    text-align: left;
+}
+
+.flashcard {
+    background-color: #e9ecef;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: 1px solid #dee2e6;
+    transition: transform 0.2s ease;
+    position: relative;
+    min-height: 150px; /* Ensure consistent height */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.flashcard.flipped {
+    background-color: #d1ecf1; /* Light blue on flip */
+}
+
+.flashcard-content {
+    backface-visibility: hidden;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.flashcard .front {
+    z-index: 2;
+    transform: rotateY(0deg);
+}
+
+.flashcard .back {
+    transform: rotateY(180deg);
+    z-index: 1;
+    display: none; /* Hide back by default */
+}
+
+.flashcard.flipped .front {
+    transform: rotateY(180deg);
+    display: none;
+}
+
+.flashcard.flipped .back {
+    transform: rotateY(360deg);
+    display: flex; /* Show back when flipped */
+}
