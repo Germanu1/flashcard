@@ -2,7 +2,7 @@
 
 // PASTE YOUR RENDER BACKEND URL HERE:
 // This is the URL that Render provides for your deployed backend service (e.g., 'https://my-flashcard-backend-xyz1.onrender.com')
-const BACKEND_BASE_URL = 'https://flashcard-generator-4b1f.onrender.com'; // <--- Make sure this is your actual Render URL!
+const BACKEND_BASE_URL = 'https://flashcard-generator-4b1f.onrender.com';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Get references to all HTML elements
