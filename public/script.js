@@ -2,10 +2,10 @@
 
 // PASTE YOUR RENDER BACKEND URL HERE:
 // This is the URL that Render provides for your deployed backend service (e.g., 'https://my-flashcard-backend-xyz1.onrender.com')
-const BACKEND_BASE_URL = 'https://flashcard-generator-4b1f.onrender.com'; // <-- YOUR RENDER URL IS HERE!
+const BACKEND_BASE_URL = 'https://flashcard-generator-4b1f.onrender.com'; // <--- Make sure this is your actual Render URL!
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Get references to all HTML elements
+    // Get references to all HTML elements (cleaned up - no duplicates)
     const notesInput = document.getElementById('notesInput');
     const imageUpload = document.getElementById('imageUpload');
     const imagePreviewDiv = document.getElementById('imagePreview');
@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorDiv = document.getElementById('error');
     const flashcardsContainer = document.getElementById('flashcardsContainer');
 
-    // Event listener for image upload to show a preview
+    // Event listener for image upload to show a preview (single block)
     imageUpload.addEventListener('change', (event) => {
         const file = event.target.files[0]; // Get the selected file
         if (file) {
@@ -34,13 +34,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             // If no file is selected (e.g., user cancels file dialog), hide preview elements
             imagePreviewDiv.classList.add('hidden');
-                clearImageBtn.classList.add('hidden');
+            clearImageBtn.classList.add('hidden');
             uploadedImage.src = '#'; // Clear the <img> source
             imageFileNameSpan.textContent = ''; // Clear the file name display
         }
     });
 
-    // Event listener for clearing the selected image
+    // Event listener for clearing the selected image (single block)
     clearImageBtn.addEventListener('click', () => {
         imageUpload.value = ''; // Clear the file input's selected file
         uploadedImage.src = '#'; // Clear the image preview
@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
-    // Event listener for the "Generate Flashcards" button click
+    // Event listener for the "Generate Flashcards" button click (single block)
     generateBtn.addEventListener('click', async () => {
         const notes = notesInput.value.trim(); // Get text from the notes input, trimmed
         const imageFile = imageUpload.files[0]; // Get the selected image file (if any)
@@ -79,7 +79,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Make the HTTP POST request to your backend server
-            const response = await fetch(`${BACKEND_BASE_URL}/generate-flashcards`, { // <-- Using the live backend URL
+            // THIS IS THE CRITICAL LINE calling your Render backend
+            const response = await fetch(`${BACKEND_BASE_URL}/generate-flashcards`, {
                 method: 'POST',
                 // IMPORTANT: Do NOT set 'Content-Type' header here.
                 // The browser automatically sets it correctly as 'multipart/form-data' when using FormData.
