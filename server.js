@@ -1,32 +1,34 @@
-require('dotenv').config(); // Load environment variables from .env file
+require('dotenv').config(); // Loads environment variables from .env file
 const express = require('express');
 const { OpenAI } = require('openai');
 const cors = require('cors');
-const multer = require('multer'); // <-- ADDED: Multer import
+const multer = require('multer'); // For handling file uploads
 
 const app = express();
-const port = 3000; // Backend server port
+// --- CRITICAL CHANGE FOR DEPLOYMENT: Use Render's assigned PORT, or fallback to 3000 locally ---
+const port = process.env.PORT || 3000;
+// --- END CRITICAL CHANGE ---
 
-// Initialize OpenAI with your API key
+// Initialize OpenAI with your API key from environment variables
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Setup Multer for memory storage. This stores the uploaded file as a Buffer in memory.
-// It's simple for small files but not ideal for very large uploads.
+// Set up Multer to store uploaded files in memory as a Buffer
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage }); // <-- ADDED: Multer setup
+const upload = multer({ storage: storage });
 
-// Middleware
-app.use(cors()); // Enable CORS for cross-origin requests from your frontend
-// IMPORTANT: Allow larger JSON bodies for base64 image data (e.g., 50mb)
+// Middleware setup
+app.use(cors()); // Enables Cross-Origin Resource Sharing for frontend communication
+// Allow larger JSON bodies for base64 image data (e.g., up to 50MB)
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static('public')); // Serve static files from the 'public' directory
+// Serves static files (your frontend HTML, CSS, JS) from the 'public' directory
+app.use(express.static('public'));
 
 // API Endpoint for generating flashcards
 // 'upload.single('image')' is Multer middleware that processes the 'image' field from FormData
 app.post('/generate-flashcards', upload.single('image'), async (req, res) => {
-    const { notes } = req.body; // Text notes from the form
+    const { notes } = req.body; // Text notes from the request body
     const imageFile = req.file; // Uploaded image file (as a Buffer) from Multer
 
     // Basic validation: ensure at least notes or an image is provided
@@ -58,8 +60,7 @@ app.post('/generate-flashcards', upload.single('image'), async (req, res) => {
             image_url: {
                 // Construct the data URL for the Base64 image
                 url: `data:${mimeType};base64,${base64Image}`,
-                // 'low' for faster/cheaper processing, 'high' for more detail (more costly)
-                detail: "low"
+                detail: "low" // 'low' for faster/cheaper processing, 'high' for more detail (more costly)
             }
         });
     }
@@ -68,13 +69,13 @@ app.post('/generate-flashcards', upload.single('image'), async (req, res) => {
     // This tells GPT-4o what to do with the combined text and image input
     messages[0].content.push({
         type: "text",
-        text: `You are a helpful AI assistant that generates flashcards from study materials. Analyze the provided text notes and/or image. Identify key concepts, facts, and definitions. For each key piece of information, create one clear question and its corresponding answer. Format the output as a list, where each item is exactly like this: "Q: [Question here]\nA: [Answer here]". Ensure there is a blank line between each flashcard. If no specific concepts are found, create general knowledge questions related to the image/text.`
+        text: `You are a helpful AI assistant that generates flashcards from study materials. Analyze the provided text notes and/or image. Identify key concepts, facts, and definitions. For each key piece of information, create one clear question and its corresponding answer. Format the output as a list, where each item is exactly like this: "Q: [Question here]\\nA: [Answer here]". Ensure there is a blank line between each flashcard. If no specific concepts are found, create general knowledge questions related to the image/text.`
     });
 
     try {
         // Make the API call to OpenAI's chat completions endpoint
         const completion = await openai.chat.completions.create({
-            model: "gpt-4o", // <-- IMPORTANT: Using a multimodal model like GPT-4o for image understanding
+            model: "gpt-4o", // IMPORTANT: Using a multimodal model like GPT-4o for image understanding
             messages: messages, // Pass the prepared multimodal messages
             temperature: 0.7,   // Controls randomness (0.2 for more factual, 1.0 for more creative)
             max_tokens: 1500,   // Max tokens for the AI's response (adjust as needed)
@@ -109,5 +110,7 @@ app.post('/generate-flashcards', upload.single('image'), async (req, res) => {
 
 // Start the Express server and listen for incoming requests
 app.listen(port, () => {
-    console.log(`Server listening at http://localhost:${port}`);
+    // --- UPDATED CONSOLE.LOG MESSAGE FOR CLARITY ON DEPLOYMENT ---
+    console.log(`Server is now listening on the assigned port: ${port}`);
+    // --- END UPDATED CONSOLE.LOG ---
 });
