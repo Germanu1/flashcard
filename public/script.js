@@ -5,7 +5,7 @@
 const BACKEND_BASE_URL = 'https://flashcard-generator-4b1f.onrender.com'; // <--- Make sure this is your actual Render URL!
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Get references to all HTML elements (cleaned up - no duplicates)
+    // Get references to all HTML elements
     const notesInput = document.getElementById('notesInput');
     const imageUpload = document.getElementById('imageUpload');
     const imagePreviewDiv = document.getElementById('imagePreview');
@@ -18,94 +18,89 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorDiv = document.getElementById('error');
     const flashcardsContainer = document.getElementById('flashcardsContainer');
 
-    // Event listener for image upload to show a preview (single block)
+    // Event listener for image upload to show a preview
     imageUpload.addEventListener('change', (event) => {
-        const file = event.target.files[0]; // Get the selected file
+        const file = event.target.files[0];
         if (file) {
-            imageFileNameSpan.textContent = file.name; // Display the file's name
-            const reader = new FileReader(); // Create a FileReader object to read file content
+            imageFileNameSpan.textContent = file.name;
+            const reader = new FileReader();
 
             reader.onload = (e) => {
-                uploadedImage.src = e.target.result; // Set the <img> source to the loaded file (for preview)
-                imagePreviewDiv.classList.remove('hidden'); // Make the preview container visible
-                clearImageBtn.classList.remove('hidden'); // Make the clear button visible
+                uploadedImage.src = e.target.result;
+                imagePreviewDiv.classList.remove('hidden');
+                clearImageBtn.classList.remove('hidden');
             };
-            reader.readAsDataURL(file); // Read the file content as a Data URL (Base64 encoded)
+            reader.readAsDataURL(file);
         } else {
-            // If no file is selected (e.g., user cancels file dialog), hide preview elements
             imagePreviewDiv.classList.add('hidden');
             clearImageBtn.classList.add('hidden');
-            uploadedImage.src = '#'; // Clear the <img> source
-            imageFileNameSpan.textContent = ''; // Clear the file name display
+            uploadedImage.src = '#';
+            imageFileNameSpan.textContent = '';
         }
     });
 
-    // Event listener for clearing the selected image (single block)
+    // Event listener for clearing the selected image
     clearImageBtn.addEventListener('click', () => {
-        imageUpload.value = ''; // Clear the file input's selected file
-        uploadedImage.src = '#'; // Clear the image preview
-        imageFileNameSpan.textContent = ''; // Clear the file name display
-        imagePreviewDiv.classList.add('hidden'); // Hide the preview container
-        clearImageBtn.classList.add('hidden'); // Hide the clear button
+        imageUpload.value = '';
+        uploadedImage.src = '#';
+        imageFileNameSpan.textContent = '';
+        imagePreviewDiv.classList.add('hidden');
+        clearImageBtn.classList.add('hidden');
     });
 
 
-    // Event listener for the "Generate Flashcards" button click (single block)
     generateBtn.addEventListener('click', async () => {
-        const notes = notesInput.value.trim(); // Get text from the notes input, trimmed
-        const imageFile = imageUpload.files[0]; // Get the selected image file (if any)
+        const notes = notesInput.value.trim();
+        const imageFile = imageUpload.files[0];
 
-        // Basic validation: User must provide either notes or an image
+        // Validate: ensure at least notes or an image is provided
         if (!notes && !imageFile) {
             errorDiv.textContent = 'Please paste some notes or select an image to generate flashcards.';
-            errorDiv.classList.remove('hidden'); // Show the error message
-            return; // Stop execution
+            errorDiv.classList.remove('hidden');
+            return;
         }
 
-        // Clear previous results and error messages
-        flashcardsContainer.innerHTML = ''; // Clear any existing flashcards
-        errorDiv.classList.add('hidden'); // Hide previous error messages
-        loadingDiv.classList.remove('hidden'); // Show loading indicator
-        generateBtn.disabled = true; // Disable the button to prevent multiple submissions
+        // Clear previous results and errors
+        flashcardsContainer.innerHTML = '';
+        errorDiv.classList.add('hidden');
+        loadingDiv.classList.remove('hidden');
+        generateBtn.disabled = true; // Disable button during processing
 
         try {
             // Create a FormData object to send both text and file data
             const formData = new FormData();
             if (notes) {
-                formData.append('notes', notes); // Append text notes to FormData
+                formData.append('notes', notes);
             }
             if (imageFile) {
-                formData.append('image', imageFile); // Append the image file to FormData
+                formData.append('image', imageFile);
             }
 
-            // Make the HTTP POST request to your backend server
-            // THIS IS THE CRITICAL LINE calling your Render backend
-            const response = await fetch(`${BACKEND_BASE_URL}/generate-flashcards`, {
+            // --- THIS IS THE CRITICAL LINE THAT NEEDS TO BE CORRECTED ---
+            const response = await fetch(`${BACKEND_BASE_URL}/generate-flashcards`, { // <-- This now correctly uses the BACKEND_BASE_URL
                 method: 'POST',
-                // IMPORTANT: Do NOT set 'Content-Type' header here.
-                // The browser automatically sets it correctly as 'multipart/form-data' when using FormData.
-                body: formData // Send the FormData object as the request body
+                // IMPORTANT: Do NOT set 'Content-Type': 'application/json' when using FormData.
+                // The browser automatically sets it correctly as 'multipart/form-data' header.
+                body: formData // Send the FormData object
             });
 
-            // Check if the response was successful (HTTP status code 200-299)
             if (!response.ok) {
-                const errorData = await response.json(); // Parse error response from backend
+                const errorData = await response.json();
                 throw new Error(errorData.error || 'Something went wrong on the server.');
             }
 
-            const data = await response.json(); // Parse the successful JSON response from backend
+            const data = await response.json();
 
-            // Check if flashcards were generated and display them
             if (data.flashcards && data.flashcards.length > 0) {
                 data.flashcards.forEach(card => {
                     const flashcardDiv = document.createElement('div');
                     flashcardDiv.classList.add('flashcard');
 
-                    // Clean up potential leading/trailing "Q: " and "A: " from AI output
+                    // Clean up potential leading/trailing Q:/A: that might be left by AI
                     const questionText = card.question.replace(/^Q: /, '').trim();
                     const answerText = card.answer.replace(/^A: /, '').trim();
 
-                    // Populate the flashcard HTML
+
                     flashcardDiv.innerHTML = `
                         <div class="flashcard-content front">
                             <h3>Question:</h3>
@@ -117,8 +112,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     `;
 
-                    // Add click listener to flip the flashcard
                     flashcardDiv.addEventListener('click', () => {
+                        // Toggle between front and back
                         const front = flashcardDiv.querySelector('.front');
                         const back = flashcardDiv.querySelector('.back');
 
@@ -133,21 +128,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     });
 
-                    flashcardsContainer.appendChild(flashcardDiv); // Add the flashcard to the container
+
+                    flashcardsContainer.appendChild(flashcardDiv);
                 });
             } else {
-                // If no flashcards were returned, display an appropriate message
                 errorDiv.textContent = 'No flashcards could be generated from the provided notes/image. Please try different input or more detailed content.';
                 errorDiv.classList.remove('hidden');
             }
 
         } catch (error) {
-            console.error('Fetch error:', error); // Log any network or server errors
-            errorDiv.textContent = `Error: ${error.message}. Please try again.`; // Display user-friendly error
+            console.error('Fetch error:', error);
+            errorDiv.textContent = `Error: ${error.message}. Please try again.`;
             errorDiv.classList.remove('hidden');
         } finally {
-            loadingDiv.classList.add('hidden'); // Hide loading indicator
-            generateBtn.disabled = false; // Re-enable the button
+            loadingDiv.classList.add('hidden');
+            generateBtn.disabled = false; // Re-enable button
         }
     });
 });
