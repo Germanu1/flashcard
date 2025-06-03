@@ -12,18 +12,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const imageFileNameSpan = document.getElementById('imageFileName');
     const clearImageBtn = document.getElementById('clearImageBtn');
 
-    // NEW: Speech-to-text elements
+    // Speech-to-text elements
     const recordBtn = document.getElementById('recordBtn');
     const stopBtn = document.getElementById('stopBtn');
     const recordingStatus = document.getElementById('recordingStatus');
-    // END NEW
 
     const generateBtn = document.getElementById('generateBtn');
     const loadingDiv = document.getElementById('loading');
     const errorDiv = document.getElementById('error');
     const flashcardsContainer = document.getElementById('flashcardsContainer');
 
-    // NEW: Speech-to-text recording logic variables
+    // NEW: Auth elements
+    const authSection = document.getElementById('authSection');
+    const appContent = document.getElementById('appContent'); // Div that holds the main app content
+    const authUsername = document.getElementById('authUsername');
+    const authPassword = document.getElementById('authPassword');
+    const registerBtn = document.getElementById('registerBtn');
+    const loginBtn = document.getElementById('loginBtn');
+    const authMessage = document.getElementById('authMessage');
+    // END NEW
+
+    // Speech-to-text recording logic variables
     let mediaRecorder;
     let audioChunks = [];
 
@@ -35,18 +44,17 @@ document.addEventListener('DOMContentLoaded', () => {
         flashcardsContainer.innerHTML = ''; // Clear previous results
 
         const formData = new FormData();
-        // Append the audio file with a generic name 'input_file'
         formData.append('input_file', audioBlob, 'recording.webm');
 
         try {
-            const response = await fetch(`${BACKEND_BASE_URL}/generate-flashcards`, { // Use existing endpoint
+            const response = await fetch(`${BACKEND_BASE_URL}/generate-flashcards`, {
                 method: 'POST',
                 body: formData
             });
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to get flashcards from backend.');
+                throw new Error(data.error || 'Failed to get flashcards from backend.'); // Use 'data.error' for backend errors
             }
 
             const data = await response.json();
@@ -66,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <h3>Answer:</h3>
                             <p>${answerText}</p>
                         </div>
-                    `; // Corrected template literal syntax
+                    `;
                     flashcardDiv.addEventListener('click', () => {
                         const front = flashcardDiv.querySelector('.front');
                         const back = flashcardDiv.querySelector('.back');
@@ -88,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Error sending audio or processing response:', error);
-            errorDiv.textContent = `Error: ${error.message}. Please try again.`; // Corrected syntax here
+            errorDiv.textContent = `Error: ${error.message}. Please try again.`;
             errorDiv.classList.remove('hidden');
         } finally {
             loadingDiv.classList.add('hidden');
@@ -102,39 +110,34 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-
     recordBtn.addEventListener('click', async () => {
         try {
-            // Request microphone access
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
-            audioChunks = []; // Clear previous recordings
+            audioChunks = [];
 
-            // When audio data is available, push it to chunks
             mediaRecorder.ondataavailable = event => {
                 audioChunks.push(event.data);
             };
 
-            // When recording stops, create a Blob and send it
             mediaRecorder.onstop = () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' }); // Use webm for compatibility
-                sendAudioToBackend(audioBlob); // Function to send audio to backend
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                sendAudioToBackend(audioBlob);
             };
 
-            mediaRecorder.start(); // Start recording
+            mediaRecorder.start();
             recordingStatus.textContent = 'Recording... (Click Stop when done)';
             recordingStatus.classList.remove('hidden');
             recordBtn.disabled = true;
             stopBtn.disabled = false;
-            generateBtn.disabled = true; // Disable generate while recording
-            notesInput.disabled = true; // Disable notes input
-            imageUpload.disabled = true; // Disable image input
-            clearImageBtn.disabled = true; // Disable image clear
+            generateBtn.disabled = true;
+            notesInput.disabled = true;
+            imageUpload.disabled = true;
+            clearImageBtn.disabled = true;
         } catch (error) {
             console.error('Error accessing microphone:', error);
             recordingStatus.textContent = 'Microphone access denied or error. Please check browser permissions.';
             recordingStatus.classList.remove('hidden');
-            // Re-enable input options if recording couldn't start
             generateBtn.disabled = false;
             notesInput.disabled = false;
             imageUpload.disabled = false;
@@ -147,12 +150,10 @@ document.addEventListener('DOMContentLoaded', () => {
             mediaRecorder.stop();
             recordingStatus.textContent = 'Processing audio...';
             stopBtn.disabled = true;
-            recordBtn.disabled = false; // Will be re-enabled after backend response
-            // Generate button enabled after audio processed by sendAudioToBackend
+            recordBtn.disabled = false;
         }
     });
 
-    // Existing image upload and clear logic (ensure no duplicates)
     imageUpload.addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (file) {
@@ -181,11 +182,9 @@ document.addEventListener('DOMContentLoaded', () => {
         clearImageBtn.classList.add('hidden');
     });
 
-    // MODIFIED: generateBtn logic to handle only text/image if no recording is active
     generateBtn.addEventListener('click', async () => {
-        // If we're recording, this button shouldn't do anything or should be disabled
         if (mediaRecorder && mediaRecorder.state === 'recording') {
-            return; // Don't allow generation while recording
+            return;
         }
 
         const notes = notesInput.value.trim();
@@ -201,9 +200,9 @@ document.addEventListener('DOMContentLoaded', () => {
         errorDiv.classList.add('hidden');
         loadingDiv.classList.remove('hidden');
         generateBtn.disabled = true;
-        notesInput.disabled = true; // Disable notes input
-        imageUpload.disabled = true; // Disable image input
-        clearImageBtn.disabled = true; // Disable image clear
+        notesInput.disabled = true;
+        imageUpload.disabled = true;
+        clearImageBtn.disabled = true;
 
         try {
             const formData = new FormData();
@@ -211,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 formData.append('notes', notes);
             }
             if (imageFile) {
-                formData.append('input_file', imageFile); // Changed from 'image' to 'input_file'
+                formData.append('input_file', imageFile);
             }
 
             const response = await fetch(`${BACKEND_BASE_URL}/generate-flashcards`, {
@@ -273,4 +272,80 @@ document.addEventListener('DOMContentLoaded', () => {
             clearImageBtn.disabled = false;
         }
     });
+
+    // NEW: Auth logic
+    function checkAuth() {
+        const token = localStorage.getItem('token');
+        if (token) {
+            authSection.classList.add('hidden');
+            appContent.classList.remove('hidden');
+            authMessage.textContent = '';
+        } else {
+            authSection.classList.remove('hidden');
+            appContent.classList.add('hidden');
+        }
+    }
+
+    registerBtn.addEventListener('click', async () => {
+        const username = authUsername.value;
+        const password = authPassword.value;
+        authMessage.textContent = '';
+        try {
+            const response = await fetch(`${BACKEND_BASE_URL}/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Registration failed.');
+            authMessage.textContent = 'Registration successful! You can now log in.';
+            authMessage.style.color = 'green';
+        } catch (error) {
+            authMessage.textContent = `Registration error: ${error.message}`;
+            authMessage.style.color = 'red';
+        }
+    });
+
+    loginBtn.addEventListener('click', async () => {
+        const username = authUsername.value;
+        const password = authPassword.value;
+        authMessage.textContent = '';
+        try {
+            const response = await fetch(`${BACKEND_BASE_URL}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Login failed.');
+            localStorage.setItem('token', data.token); // Store the JWT token
+            checkAuth(); // Show the app content
+        } catch (error) {
+            authMessage.textContent = `Login error: ${error.message}`;
+            authMessage.style.color = 'red';
+        }
+    });
+
+    // Call checkAuth on page load
+    checkAuth();
+
+    // Intercept all fetch requests to add the Authorization header
+    const originalFetch = window.fetch;
+    window.fetch = async function(...args) {
+        const url = args[0];
+        const options = args[1] || {};
+        
+        // Only add token for requests to our own backend
+        if (url.startsWith(BACKEND_BASE_URL)) {
+            const token = localStorage.getItem('token');
+            if (token) {
+                options.headers = {
+                    ...options.headers,
+                    'Authorization': `Bearer ${token}`
+                };
+            }
+        }
+        return originalFetch.apply(this, args);
+    };
+    // END NEW: Auth logic and fetch interceptor
 });
