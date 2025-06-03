@@ -3,6 +3,7 @@ const express = require('express');
 const { OpenAI } = require('openai');
 const cors = require('cors');
 const multer = require('multer'); // For handling file uploads
+const fs = require('fs'); // Node.js file system module (for creating temporary files if needed, or directly from buffer)
 
 const app = express();
 // --- CRITICAL CHANGE FOR DEPLOYMENT: Use Render's assigned PORT, or fallback to 3000 locally ---
@@ -14,7 +15,8 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Set up Multer to store uploaded files in memory as a Buffer
+// Set up Multer for memory storage. This stores the uploaded file as a Buffer in memory.
+// We use 'input_file' as the generic field name for both image and audio.
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
@@ -25,55 +27,72 @@ app.use(express.json({ limit: '50mb' }));
 // Serves static files (your frontend HTML, CSS, JS) from the 'public' directory
 app.use(express.static('public'));
 
-// API Endpoint for generating flashcards
-// 'upload.single('image')' is Multer middleware that processes the 'image' field from FormData
-app.post('/generate-flashcards', upload.single('image'), async (req, res) => {
+// MODIFIED: API Endpoint to handle notes, image, OR audio
+app.post('/generate-flashcards', upload.single('input_file'), async (req, res) => { // 'input_file' will be the generic field name from frontend
     const { notes } = req.body; // Text notes from the request body
-    const imageFile = req.file; // Uploaded image file (as a Buffer) from Multer
+    const file = req.file; // This could be an image or an audio file
 
-    // Basic validation: ensure at least notes or an image is provided
-    if (!notes && !imageFile) {
-        return res.status(400).json({ error: 'Please provide notes text or an image.' });
+    let transcribedText = '';
+
+    // Step 1: Handle Audio Transcription if an audio file is provided
+    if (file && file.mimetype && file.mimetype.startsWith('audio/')) {
+        try {
+            // OpenAI's Whisper API expects a File object, so we recreate it from the buffer
+            // Use originalname as filename, and mimetype for type
+            const audioFileForWhisper = new File([file.buffer], file.originalname, { type: file.mimetype });
+
+            const transcription = await openai.audio.transcriptions.create({
+                file: audioFileForWhisper,
+                model: "whisper-1", // Whisper API model for transcription
+            });
+            transcribedText = transcription.text;
+            console.log('Whisper transcription:', transcribedText); // For debugging
+        } catch (whisperError) {
+            console.error('Error transcribing audio with Whisper:', whisperError);
+            // Log specific error details from OpenAI if available
+            if (whisperError.response) {
+                console.error('Whisper API Error Status:', whisperError.response.status);
+                console.error('Whisper API Error Data:', whisperError.response.data);
+            }
+            return res.status(500).json({ error: 'Failed to transcribe audio. Please try a different audio format or quality.' });
+        }
     }
 
-    // Prepare the 'messages' array for OpenAI's chat completions API
-    // This array handles both text and image content for multimodal models
+    // Prepare messages array for GPT-4o
     const messages = [{
         role: "user",
         content: [] // The content array will hold text and image parts
     }];
 
-    // Add text notes to the content array if provided
-    if (notes) {
+    // Step 2: Add content for GPT-4o based on input type (prioritizing audio then text then image)
+    if (transcribedText) { // If audio was transcribed
+        messages[0].content.push({ type: "text", text: `Here are notes transcribed from audio:\n${transcribedText}` });
+    } else if (notes) { // If text notes were provided
         messages[0].content.push({ type: "text", text: `Here are some study notes:\n${notes}` });
-    }
-
-    // Add image data to the content array if an image file is provided
-    if (imageFile) {
-        // Convert the image buffer to a Base64 string
-        const base64Image = imageFile.buffer.toString('base64');
-        // Get the MIME type (e.g., 'image/png', 'image/jpeg')
-        const mimeType = imageFile.mimetype;
-
+    } else if (file && file.mimetype && file.mimetype.startsWith('image/')) { // If an image file was provided
+        const base64Image = file.buffer.toString('base64');
+        const mimeType = file.mimetype;
         messages[0].content.push({
-            type: "image_url", // Indicate that this part is an image URL
+            type: "image_url",
             image_url: {
-                // Construct the data URL for the Base64 image
                 url: `data:${mimeType};base64,${base64Image}`,
                 detail: "low" // 'low' for faster/cheaper processing, 'high' for more detail (more costly)
             }
         });
+    } else {
+        // If no valid input (text, audio, or image) is provided
+        return res.status(400).json({ error: 'Please provide notes text, an image, or audio input.' });
     }
 
-    // --- UPDATED AI PROMPT FOR STRICTER FORMATTING ---
+
+    // Step 3: Add core instruction for GPT-4o
     messages[0].content.push({
         type: "text",
-        text: `Based on the provided study notes and/or image, generate a list of distinct flashcards. Each flashcard MUST strictly follow the format "Q: [Your Question Here]\\nA: [Your Answer Here]". There MUST be exactly one blank line between each flashcard. Do NOT include any introductory or concluding remarks, or any other text outside of the Q: and A: pairs. Provide at least 3-5 flashcards if possible. If no relevant concepts are found, respond with "No flashcards could be generated."`
+        text: `Based on the provided study materials, generate a list of distinct flashcards. Each flashcard MUST strictly follow the format "Q: [Your Question Here]\\nA: [Your Answer Here]". There MUST be exactly one blank line between each flashcard. Do NOT include any introductory or concluding remarks, or any other text outside of the Q: and A: pairs. Provide at least 3-5 flashcards if possible. If no relevant concepts are found, respond with "No flashcards could be generated."`
     });
-    // --- END UPDATED AI PROMPT ---
 
     try {
-        // Make the API call to OpenAI's chat completions endpoint
+        // Step 4: Call GPT-4o
         const completion = await openai.chat.completions.create({
             model: "gpt-4o", // IMPORTANT: Using a multimodal model like GPT-4o for image understanding
             messages: messages, // Pass the prepared multimodal messages
@@ -81,11 +100,12 @@ app.post('/generate-flashcards', upload.single('image'), async (req, res) => {
             max_tokens: 1500,   // Max tokens for the AI's response (adjust as needed)
         });
 
-        // Extract the generated flashcards text from the AI's response
         const flashcardsText = completion.choices[0].message.content.trim();
 
-        // Simple parsing: Split the text by blank lines to get individual flashcards
-        // Then, parse each flashcard into a question and answer object
+        if (flashcardsText === "No flashcards could be generated.") {
+            return res.status(200).json({ flashcards: [], error: "No flashcards could be generated from the provided input." });
+        }
+
         const flashcards = flashcardsText.split('\n\n').filter(Boolean).map(card => {
             const parts = card.split('\n');
             const question = parts[0] ? parts[0].replace(/^Q: /, '').trim() : '';
@@ -93,17 +113,17 @@ app.post('/generate-flashcards', upload.single('image'), async (req, res) => {
             return { question, answer };
         });
 
-        // Send the parsed flashcards back to the frontend as JSON
         res.json({ flashcards });
 
     } catch (error) {
-        console.error('Error generating flashcards:', error);
+        console.error('Error generating flashcards with GPT-4o:', error);
         // Handle API errors or other issues
         if (error.response) {
-            console.error(error.response.status, error.response.data);
+            console.error('GPT-4o API Error Status:', error.response.status);
+            console.error('GPT-4o API Error Data:', error.response.data);
             res.status(error.response.status).json(error.response.data);
         } else {
-            res.status(500).json({ error: 'Failed to generate flashcards.' });
+            res.status(500).json({ error: 'Failed to generate flashcards due to an internal AI error.' });
         }
     }
 });
