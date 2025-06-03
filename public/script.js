@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('input_file', audioBlob, 'recording.webm');
 
         try {
-            const response = await fetch(`${BACKEND_BASE_URL}/generate-flashcards`, {
+            const response = await fetch(`${BACKEND_BASE_URL}/generate-flashcards`, { // Use existing endpoint
                 method: 'POST',
                 body: formData
             });

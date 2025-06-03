@@ -11,29 +11,39 @@
         <h1>AI Flashcard Generator</h1>
         <p>Paste your notes, upload an image, or speak your notes to generate flashcards!</p>
 
-        <textarea id="notesInput" placeholder="Paste your notes here..." rows="15"></textarea>
-
-        <div class="speech-section">
-            <button id="recordBtn" class="speech-btn">Start Recording</button>
-            <button id="stopBtn" class="speech-btn" disabled>Stop Recording</button>
-            <span id="recordingStatus" class="recording-status hidden"></span>
+        <div id="authSection">
+            <h2>Register / Login</h2>
+            <input type="text" id="authUsername" placeholder="Username">
+            <input type="password" id="authPassword" placeholder="Password">
+            <button id="registerBtn">Register</button>
+            <button id="loginBtn">Login</button>
+            <p id="authMessage" class="error-message"></p>
         </div>
-        <p class="or-separator">OR</p> <label for="imageUpload" class="file-upload-label">
-            Or upload an image:
-            <input type="file" id="imageUpload" accept="image/*">
-        </label>
-        <div id="imagePreview" class="hidden">
-            <img id="uploadedImage" src="#" alt="Image Preview" style="max-width: 100%; max-height: 200px; margin-top: 10px; border-radius: 5px;">
-            <p>Selected: <span id="imageFileName"></span></p>
-        </div>
-        <button id="clearImageBtn" class="hidden">Clear Image</button>
-        <br><br> <button id="generateBtn">Generate Flashcards</button>
+        <div id="appContent" class="hidden">
+            <textarea id="notesInput" placeholder="Paste your notes here..." rows="15"></textarea>
 
-        <div id="loading" class="hidden">Generating flashcards...</div>
-        <div id="error" class="error-message hidden"></div>
-
-        <div id="flashcardsContainer">
+            <div class="speech-section">
+                <button id="recordBtn" class="speech-btn">Start Recording</button>
+                <button id="stopBtn" class="speech-btn" disabled>Stop Recording</button>
+                <span id="recordingStatus" class="recording-status hidden"></span>
             </div>
+            <p class="or-separator">OR</p> <label for="imageUpload" class="file-upload-label">
+                Or upload an image:
+                <input type="file" id="imageUpload" accept="image/*">
+            </label>
+            <div id="imagePreview" class="hidden">
+                <img id="uploadedImage" src="#" alt="Image Preview" style="max-width: 100%; max-height: 200px; margin-top: 10px; border-radius: 5px;">
+                <p>Selected: <span id="imageFileName"></span></p>
+            </div>
+            <button id="clearImageBtn" class="hidden">Clear Image</button>
+            <br><br> <button id="generateBtn">Generate Flashcards</button>
+
+            <div id="loading" class="hidden">Generating flashcards...</div>
+            <div id="error" class="error-message hidden"></div>
+
+            <div id="flashcardsContainer">
+                </div>
+        </div>
     </div>
 
     <script src="script.js"></script>

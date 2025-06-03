@@ -3,7 +3,9 @@ const express = require('express');
 const { OpenAI } = require('openai');
 const cors = require('cors');
 const multer = require('multer'); // For handling file uploads
-const fs = require('fs'); // Node.js file system module (for creating temporary files if needed, or directly from buffer)
+const mongoose = require('mongoose'); // For MongoDB interaction
+const bcrypt = require('bcryptjs'); // For password hashing
+const jwt = require('jsonwebtoken'); // For JSON Web Tokens
 
 const app = express();
 // --- CRITICAL CHANGE FOR DEPLOYMENT: Use Render's assigned PORT, or fallback to 3000 locally ---
@@ -14,6 +16,30 @@ const port = process.env.PORT || 3000;
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
+
+// MongoDB Connection
+mongoose.connect(process.env.MONGODB_URI)
+    .then(() => console.log('Connected to MongoDB Atlas'))
+    .catch(err => console.error('Could not connect to MongoDB Atlas', err));
+
+// Define User Schema (before app.use middleware)
+const userSchema = new mongoose.Schema({
+    username: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    // Trial and subscription fields (for future subscription logic)
+    trialEndDate: { type: Date, default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }, // 30 days trial from registration
+    isSubscribed: { type: Boolean, default: false }
+});
+
+// Pre-save hook to hash password before saving
+userSchema.pre('save', async function(next) {
+    if (this.isModified('password')) { // Only hash if password field is modified (e.g., on registration or password change)
+        this.password = await bcrypt.hash(this.password, 10);
+    }
+    next();
+});
+
+const User = mongoose.model('User', userSchema);
 
 // Set up Multer for memory storage. This stores the uploaded file as a Buffer in memory.
 // We use 'input_file' as the generic field name for both image and audio.
@@ -27,8 +53,71 @@ app.use(express.json({ limit: '50mb' }));
 // Serves static files (your frontend HTML, CSS, JS) from the 'public' directory
 app.use(express.static('public'));
 
-// MODIFIED: API Endpoint to handle notes, image, OR audio
-app.post('/generate-flashcards', upload.single('input_file'), async (req, res) => { // 'input_file' will be the generic field name from frontend
+// User Registration Endpoint
+app.post('/register', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const user = new User({ username, password });
+        await user.save();
+        res.status(201).json({ message: 'User registered successfully!' });
+    } catch (error) {
+        if (error.code === 11000) { // Duplicate key error for unique username
+            return res.status(400).json({ error: 'Username already exists.' });
+        }
+        console.error('Registration error:', error);
+        res.status(500).json({ error: 'Server error during registration.' });
+    }
+});
+
+// User Login Endpoint
+app.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const user = await User.findOne({ username });
+        if (!user) {
+            return res.status(400).json({ error: 'Invalid username or password.' });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ error: 'Invalid username or password.' });
+        }
+
+        // Generate JWT Token
+        const token = jwt.sign(
+            { id: user._id, username: user.username },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' } // Token expires in 1 hour
+        );
+
+        res.json({ message: 'Logged in successfully!', token });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Server error during login.' });
+    }
+});
+
+// Authentication Middleware
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Expects 'Bearer TOKEN'
+
+    if (!token) {
+        return res.status(401).json({ error: 'Authentication required: No token provided.' });
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) {
+            console.error('JWT verification error:', err);
+            return res.status(403).json({ error: 'Authentication failed: Invalid or expired token.' });
+        }
+        req.user = user; // Attach user payload to request
+        next();
+    });
+};
+
+// MODIFIED: API Endpoint to handle notes, image, OR audio (NOW PROTECTED)
+app.post('/generate-flashcards', authenticateToken, upload.single('input_file'), async (req, res) => { // 'input_file' will be the generic field name from frontend
     const { notes } = req.body; // Text notes from the request body
     const file = req.file; // This could be an image or an audio file
 
@@ -38,7 +127,6 @@ app.post('/generate-flashcards', upload.single('input_file'), async (req, res) =
     if (file && file.mimetype && file.mimetype.startsWith('audio/')) {
         try {
             // OpenAI's Whisper API expects a File object, so we recreate it from the buffer
-            // Use originalname as filename, and mimetype for type
             const audioFileForWhisper = new File([file.buffer], file.originalname, { type: file.mimetype });
 
             const transcription = await openai.audio.transcriptions.create({
@@ -49,7 +137,6 @@ app.post('/generate-flashcards', upload.single('input_file'), async (req, res) =
             console.log('Whisper transcription:', transcribedText); // For debugging
         } catch (whisperError) {
             console.error('Error transcribing audio with Whisper:', whisperError);
-            // Log specific error details from OpenAI if available
             if (whisperError.response) {
                 console.error('Whisper API Error Status:', whisperError.response.status);
                 console.error('Whisper API Error Data:', whisperError.response.data);
@@ -117,7 +204,6 @@ app.post('/generate-flashcards', upload.single('input_file'), async (req, res) =
 
     } catch (error) {
         console.error('Error generating flashcards with GPT-4o:', error);
-        // Handle API errors or other issues
         if (error.response) {
             console.error('GPT-4o API Error Status:', error.response.status);
             console.error('GPT-4o API Error Data:', error.response.data);
