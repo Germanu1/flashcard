@@ -19,7 +19,10 @@
             <button id="loginBtn">Login</button>
             <p id="authMessage" class="error-message"></p>
         </div>
+
         <div id="appContent" class="hidden">
+            <p id="trialStatus" class="recording-status"></p> 
+            
             <textarea id="notesInput" placeholder="Paste your notes here..." rows="15"></textarea>
 
             <div class="speech-section">
@@ -27,7 +30,8 @@
                 <button id="stopBtn" class="speech-btn" disabled>Stop Recording</button>
                 <span id="recordingStatus" class="recording-status hidden"></span>
             </div>
-            <p class="or-separator">OR</p> <label for="imageUpload" class="file-upload-label">
+            <p class="or-separator">OR</p>
+            <label for="imageUpload" class="file-upload-label">
                 Or upload an image:
                 <input type="file" id="imageUpload" accept="image/*">
             </label>
