@@ -29,7 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const authPassword = document.getElementById('authPassword');
     const registerBtn = document.getElementById('registerBtn');
     const loginBtn = document.getElementById('loginBtn');
+    const signOutBtn = document.getElementById('signOutBtn'); // NEW SIGN OUT BUTTON REFERENCE
     const authMessage = document.getElementById('authMessage');
+    const trialStatus = document.getElementById('trialStatus'); // Reference to trial status element
 
     // Speech-to-text recording logic variables
     let mediaRecorder;
@@ -325,6 +327,15 @@ document.addEventListener('DOMContentLoaded', () => {
             authMessage.style.color = 'red';
         }
     });
+
+    // NEW: Sign Out Button Listener
+    signOutBtn.addEventListener('click', () => {
+        localStorage.removeItem('token'); // Remove the JWT token
+        checkAuth(); // Re-run auth check to show login/register form
+        authMessage.textContent = 'You have been signed out.';
+        authMessage.style.color = 'green';
+    });
+    // END NEW: Sign Out Button Listener
 
     // Call checkAuth on page load
     checkAuth();
