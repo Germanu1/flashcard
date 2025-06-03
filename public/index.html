@@ -9,11 +9,16 @@
 <body>
     <div class="container">
         <h1>AI Flashcard Generator</h1>
-        <p>Paste your study notes below or upload an image, and let AI create flashcards for you!</p>
+        <p>Paste your notes, upload an image, or speak your notes to generate flashcards!</p>
 
         <textarea id="notesInput" placeholder="Paste your notes here..." rows="15"></textarea>
 
-        <label for="imageUpload" class="file-upload-label">
+        <div class="speech-section">
+            <button id="recordBtn" class="speech-btn">Start Recording</button>
+            <button id="stopBtn" class="speech-btn" disabled>Stop Recording</button>
+            <span id="recordingStatus" class="recording-status hidden"></span>
+        </div>
+        <p class="or-separator">OR</p> <label for="imageUpload" class="file-upload-label">
             Or upload an image:
             <input type="file" id="imageUpload" accept="image/*">
         </label>
