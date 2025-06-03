@@ -22,12 +22,12 @@ mongoose.connect(process.env.MONGODB_URI)
     .then(() => console.log('Connected to MongoDB Atlas'))
     .catch(err => console.error('Could not connect to MongoDB Atlas', err));
 
-// Define User Schema (before app.use middleware)
+// Define User Schema
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    // Trial and subscription fields (for future subscription logic)
-    trialEndDate: { type: Date, default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }, // 30 days trial from registration
+    // Trial and subscription fields
+    trialEndDate: { type: Date, default: () => new Date(Date.now() + 10 * 24 * 60 * 60 * 1000) }, // 10 days trial
     isSubscribed: { type: Boolean, default: false }
 });
 
@@ -42,7 +42,6 @@ userSchema.pre('save', async function(next) {
 const User = mongoose.model('User', userSchema);
 
 // Set up Multer for memory storage. This stores the uploaded file as a Buffer in memory.
-// We use 'input_file' as the generic field name for both image and audio.
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
@@ -116,8 +115,34 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
+// Subscription/Trial Check Middleware
+const checkSubscription = async (req, res, next) => {
+    try {
+        const user = await User.findById(req.user.id); // req.user.id comes from authenticateToken
+        if (!user) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
+
+        const now = new Date();
+
+        if (user.isSubscribed) {
+            // User is actively subscribed, allow access
+            next();
+        } else if (user.trialEndDate && user.trialEndDate > now) {
+            // User is in active trial period, allow access
+            next();
+        } else {
+            // Trial has ended and not subscribed
+            return res.status(403).json({ error: 'Trial ended or not subscribed. Please subscribe to continue using this feature.' });
+        }
+    } catch (error) {
+        console.error('Subscription check error:', error);
+        res.status(500).json({ error: 'Server error during subscription check.' });
+    }
+};
+
 // MODIFIED: API Endpoint to handle notes, image, OR audio (NOW PROTECTED)
-app.post('/generate-flashcards', authenticateToken, upload.single('input_file'), async (req, res) => { // 'input_file' will be the generic field name from frontend
+app.post('/generate-flashcards', authenticateToken, checkSubscription, upload.single('input_file'), async (req, res) => { // 'input_file' will be the generic field name from frontend
     const { notes } = req.body; // Text notes from the request body
     const file = req.file; // This could be an image or an audio file
 
@@ -204,6 +229,7 @@ app.post('/generate-flashcards', authenticateToken, upload.single('input_file'),
 
     } catch (error) {
         console.error('Error generating flashcards with GPT-4o:', error);
+        // Handle API errors or other issues
         if (error.response) {
             console.error('GPT-4o API Error Status:', error.response.status);
             console.error('GPT-4o API Error Data:', error.response.data);

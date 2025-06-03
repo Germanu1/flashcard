@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorDiv = document.getElementById('error');
     const flashcardsContainer = document.getElementById('flashcardsContainer');
 
-    // NEW: Auth elements
+    // Auth elements
     const authSection = document.getElementById('authSection');
     const appContent = document.getElementById('appContent'); // Div that holds the main app content
     const authUsername = document.getElementById('authUsername');
@@ -30,13 +30,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const registerBtn = document.getElementById('registerBtn');
     const loginBtn = document.getElementById('loginBtn');
     const authMessage = document.getElementById('authMessage');
-    // END NEW
 
     // Speech-to-text recording logic variables
     let mediaRecorder;
     let audioChunks = [];
 
-    // Function to send audio to backend (moved to correct scope)
+    // Function to send audio to backend (correctly scoped within DOMContentLoaded)
     async function sendAudioToBackend(audioBlob) {
         recordingStatus.textContent = 'Transcribing and generating flashcards...';
         loadingDiv.classList.remove('hidden');
@@ -54,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(data.error || 'Failed to get flashcards from backend.'); // Use 'data.error' for backend errors
+                throw new Error(data.error || 'Failed to get flashcards from backend.');
             }
 
             const data = await response.json();
@@ -109,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
             clearImageBtn.disabled = false; // Re-enable image clear
         }
     }
+
 
     recordBtn.addEventListener('click', async () => {
         try {
