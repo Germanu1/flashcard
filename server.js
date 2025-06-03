@@ -115,6 +115,24 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
+// NEW: Endpoint to get user's subscription/trial status (PROTECTED)
+app.get('/user-status', authenticateToken, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
+        res.json({
+            username: user.username,
+            trialEndDate: user.trialEndDate,
+            isSubscribed: user.isSubscribed
+        });
+    } catch (error) {
+        console.error('Error fetching user status:', error);
+        res.status(500).json({ error: 'Server error fetching user status.' });
+    }
+});
+
 // Subscription/Trial Check Middleware
 const checkSubscription = async (req, res, next) => {
     try {
@@ -246,4 +264,3 @@ app.listen(port, () => {
     console.log(`Server is now listening on the assigned port: ${port}`);
     // --- END UPDATED CONSOLE.LOG ---
 });
-
