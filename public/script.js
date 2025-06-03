@@ -328,6 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 trialStatus.classList.remove('hidden'); // Make trial status visible
             } else { // Token exists but failed validation/fetch (e.g., token invalid or expired on server)
                 // getUserData already removed token if 401/403, so just hide app and show auth
+                localStorage.removeItem('token'); // Ensure token is cleared if validation failed
                 authSection.classList.remove('hidden'); // Show auth section
                 appContent.classList.add('hidden'); // Hide app content
                 trialStatus.classList.add('hidden'); // Hide trial status
