@@ -26,12 +26,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const authSection = document.getElementById('authSection');
     const appContent = document.getElementById('appContent'); // Div that holds the main app content
     const authUsername = document.getElementById('authUsername');
+    const authEmail = document.getElementById('authEmail'); // <--- ADDED: Email input reference
     const authPassword = document.getElementById('authPassword');
     const registerBtn = document.getElementById('registerBtn');
     const loginBtn = document.getElementById('loginBtn');
-    const signOutBtn = document.getElementById('signOutBtn'); // NEW SIGN OUT BUTTON REFERENCE
+    const signOutBtn = document.getElementById('signOutBtn');
     const authMessage = document.getElementById('authMessage');
-    const trialStatus = document.getElementById('trialStatus'); // Reference to trial status element
+    const trialStatus = document.getElementById('trialStatus');
 
     // Speech-to-text recording logic variables
     let mediaRecorder;
@@ -55,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(data.error || 'Failed to get flashcards from backend.');
+                throw new Error(errorData.error || 'Failed to get flashcards from backend.');
             }
 
             const data = await response.json();
@@ -276,19 +277,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // NEW: Auth logic
-    // Function to get user data (add this outside DOMContentLoaded if you want, or just paste it in script.js)
+    // Function to get user data
     async function getUserData() {
         const token = localStorage.getItem('token');
         if (!token) return null;
         try {
-            const response = await fetch(`${BACKEND_BASE_URL}/user-status`, { // You'll create this endpoint next
+            const response = await fetch(`${BACKEND_BASE_URL}/user-status`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
             if (!response.ok) {
-                 // If token is invalid or expired, clear it
+                // If token is invalid or expired, clear it and force re-auth
                 if (response.status === 401 || response.status === 403) {
                     localStorage.removeItem('token');
                 }
@@ -310,6 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appContent.classList.remove('hidden');
                 authMessage.textContent = ''; // Clear any previous auth messages
 
+                // Display trial status
                 const now = new Date();
                 const trialEnd = new Date(userData.trialEndDate);
 
@@ -323,12 +325,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     trialStatus.textContent = 'Your free trial has ended. Please subscribe to continue.';
                     trialStatus.style.color = 'red';
-                    generateBtn.disabled = true; // Disable if trial ended
+                    generateBtn.disabled = true; // Disable generate button if trial ended
                 }
                 trialStatus.classList.remove('hidden'); // Make trial status visible
             } else { // Token exists but failed validation/fetch (e.g., token invalid or expired on server)
                 // getUserData already removed token if 401/403, so just hide app and show auth
-                localStorage.removeItem('token'); // Ensure token is cleared if validation failed
+                localStorage.removeItem('token'); // Ensure token is cleared if validation failed or other issue
                 authSection.classList.remove('hidden'); // Show auth section
                 appContent.classList.add('hidden'); // Hide app content
                 trialStatus.classList.add('hidden'); // Hide trial status
@@ -342,18 +344,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     registerBtn.addEventListener('click', async () => {
         const username = authUsername.value;
+        const email = authEmail.value; // Get email value
         const password = authPassword.value;
         authMessage.textContent = '';
         try {
             const response = await fetch(`${BACKEND_BASE_URL}/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ username, email, password }) // Include email
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Registration failed.');
             authMessage.textContent = 'Registration successful! You can now log in.';
             authMessage.style.color = 'green';
+            // Optionally clear the fields after successful registration
+            authUsername.value = '';
+            authEmail.value = '';
+            authPassword.value = '';
         } catch (error) {
             authMessage.textContent = `Registration error: ${error.message}`;
             authMessage.style.color = 'red';
