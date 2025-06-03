@@ -106,6 +106,62 @@ button:disabled {
 /* --- End of added styles for image upload section --- */
 
 
+/* NEW: Speech-to-text styles */
+.speech-section {
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.speech-btn {
+    background-color: #007bff; /* Blue for record/stop */
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.speech-btn:hover:not(:disabled) {
+    background-color: #0056b3;
+}
+
+.recording-status {
+    color: #007bff;
+    font-style: italic;
+    margin-left: 10px;
+}
+
+.or-separator {
+    font-weight: bold;
+    margin: 20px 0;
+    color: #777;
+}
+/* END NEW */
+
+/* NEW: Auth Button Style (for sign out) */
+.auth-btn {
+    background-color: #dc3545; /* Red for sign out */
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin: 10px 0; /* Add some space around it */
+}
+
+.auth-btn:hover {
+    background-color: #c82333;
+}
+/* END NEW */
+
+
 #flashcardsContainer {
     margin-top: 30px;
     display: grid;
