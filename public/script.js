@@ -276,15 +276,66 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // NEW: Auth logic
-    function checkAuth() {
+    // Function to get user data (add this outside DOMContentLoaded if you want, or just paste it in script.js)
+    async function getUserData() {
+        const token = localStorage.getItem('token');
+        if (!token) return null;
+        try {
+            const response = await fetch(`${BACKEND_BASE_URL}/user-status`, { // You'll create this endpoint next
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (!response.ok) {
+                 // If token is invalid or expired, clear it
+                if (response.status === 401 || response.status === 403) {
+                    localStorage.removeItem('token');
+                }
+                throw new Error('Failed to fetch user status.');
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching user status:', error);
+            return null;
+        }
+    }
+
+    async function checkAuth() { // Make checkAuth async
         const token = localStorage.getItem('token');
         if (token) {
-            authSection.classList.add('hidden');
-            appContent.classList.remove('hidden');
-            authMessage.textContent = '';
-        } else {
+            const userData = await getUserData(); // Fetch user data
+            if (userData) {
+                authSection.classList.add('hidden');
+                appContent.classList.remove('hidden');
+                authMessage.textContent = ''; // Clear any previous auth messages
+
+                const now = new Date();
+                const trialEnd = new Date(userData.trialEndDate);
+
+                if (userData.isSubscribed) {
+                    trialStatus.textContent = 'You are a premium subscriber!';
+                    trialStatus.style.color = 'green';
+                } else if (trialEnd > now) {
+                    const daysLeft = Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24));
+                    trialStatus.textContent = `Your free trial ends in ${daysLeft} days.`;
+                    trialStatus.style.color = 'blue';
+                } else {
+                    trialStatus.textContent = 'Your free trial has ended. Please subscribe to continue.';
+                    trialStatus.style.color = 'red';
+                    generateBtn.disabled = true; // Disable if trial ended
+                }
+                trialStatus.classList.remove('hidden'); // Make trial status visible
+            } else { // Token exists but failed validation/fetch (e.g., token invalid or expired on server)
+                // getUserData already removed token if 401/403, so just hide app and show auth
+                authSection.classList.remove('hidden'); // Show auth section
+                appContent.classList.add('hidden'); // Hide app content
+                trialStatus.classList.add('hidden'); // Hide trial status
+            }
+        } else { // No token found
             authSection.classList.remove('hidden');
             appContent.classList.add('hidden');
+            trialStatus.classList.add('hidden');
         }
     }
 
@@ -328,14 +379,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // NEW: Sign Out Button Listener
+    // Sign Out Button Listener
     signOutBtn.addEventListener('click', () => {
         localStorage.removeItem('token'); // Remove the JWT token
         checkAuth(); // Re-run auth check to show login/register form
         authMessage.textContent = 'You have been signed out.';
         authMessage.style.color = 'green';
     });
-    // END NEW: Sign Out Button Listener
 
     // Call checkAuth on page load
     checkAuth();
@@ -358,5 +408,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return originalFetch.apply(this, args);
     };
-    // END NEW: Auth logic and fetch interceptor
 });
